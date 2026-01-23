@@ -1,0 +1,7 @@
+model_name: "gpt2"
+
+seed: 42
+n_turns: 6
+
+log_dir: "../outputs/logs/"
+state_dir: "../outputs/state/"
