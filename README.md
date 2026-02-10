@@ -1,8 +1,9 @@
 # Conversational Chatbot with Retrieval-Augmented Generation (RAG)
 
 [my-website]: https://AJG91.github.io "my-website"
+[basic-chatbot-repo]: https://github.com/AJG91/basic-chatbot "basic-chatbot-repo"
 
-This repository demonstrates how to build a conversational chatbot with retrieval-augmented generation (RAG) using the Hugging Face ecosystem.
+This repository demonstrates how to build a conversational chatbot with retrieval-augmented generation (RAG) using the Hugging Face ecosystem. We will be incorporating the chatbot developed in the [basic-chatbot][basic-chatbot-repo] repo with the focus being to incorporate RAG.
 
 ## Getting Started
 
