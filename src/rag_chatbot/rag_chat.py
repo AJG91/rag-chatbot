@@ -1,11 +1,22 @@
+from basic_chatbot.model_local import LocalLM
+from basic_chatbot.model_openai import OpenAIChat
 from rag_chatbot.prompt_utils import build_prompt
 
 class RAGChat():
-    def __init__(self, lm, retriever):
-        self.lm = lm
+    def __init__(
+        self, 
+        model_name: str, 
+        retriever,
+        api_key: str | None = None
+    ):
+        if api_key:
+            self.lm = OpenAIChat(model_name, api_key=api_key)
+        else:
+            self.lm = LocalLM(model_name)
+
         self.retriever = retriever
 
-    def ask(self, question):
+    def ask(self, question: str) -> str:
         docs = self.retriever.retrieve(question)
         prompt = build_prompt(docs, question)
         output = self.lm.generate_text(prompt)
