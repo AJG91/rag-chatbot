@@ -18,7 +18,7 @@ class DocsRetriever:
     def retrieve(
         self, 
         query: str, 
-        k: int = 2
+        k: int = 1
     ) -> list[str]:
         query_emb = self.model.encode([query], convert_to_numpy=True)
         _, idcs = self.index.search(query_emb, k)
