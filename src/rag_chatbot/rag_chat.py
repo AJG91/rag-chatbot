@@ -4,12 +4,13 @@ from basic_chatbot.memory import ChatMemory
 from basic_chatbot.gradio_ui import chat_interface
 from basic_chatbot.logging import log_output
 from rag_chatbot.prompt_utils import build_prompt_with_history, extract_assistant_reply
-from typing import Callable
+from rag_chatbot.documents import iter_jsonl_directory
+from rag_chatbot.retriever import DocsRetriever
 
 def MyAssistant(
     model: str, 
-    retriever: Callable,
     n_turns: int, 
+    docs_dir : str,
     state_dir: str, 
     log_dir: str, 
     api_key: str | None = None,
@@ -24,10 +25,10 @@ def MyAssistant(
     ----------
     model : str
         Name of model that will be loaded.
-    retriever : Callable
-        Used to retrieve similar information from documents as the user input.
     n_turns : int
         Number of chat instances saved for context.
+    docs_dir : str
+        Directory where the documents are saved.
     state_dir : str
         Directory where the conversation state is saved.
     log_dir : str
@@ -40,7 +41,7 @@ def MyAssistant(
         Opens Gradio UI inline if set to True.
         Otherwise, opens a new window for UI.
     """
-    bot = RAGChat(model, retriever, n_turns, state_dir, log_dir, api_key=api_key)
+    bot = RAGChat(model, n_turns, docs_dir, state_dir, log_dir, api_key=api_key)
     demo = chat_interface(bot)
     demo.launch(share=share, inline=inline)
 
@@ -67,10 +68,10 @@ class RAGChat():
     ----------
     model_name : str
         Name of model that will be loaded.
-    retriever : Callable
-        Used to retrieve similar information from documents as the user input.
     n_turns : int
         Number of chat instances saved for context.
+    docs_dir : str
+        Directory where the documents are saved.
     state_dir : str
         Directory where the conversation state is saved.
     log_dir : str
@@ -85,8 +86,8 @@ class RAGChat():
     def __init__(
         self, 
         model_name: str, 
-        retriever: Callable,
         n_turns: int, 
+        docs_dir: str,
         state_dir: str,
         log_dir: str,
         state_fname: str = "conversation_state.json",
@@ -101,9 +102,11 @@ class RAGChat():
         state_path = state_dir + state_fname
         log_path = log_dir + log_fname
 
-        self.retriever = retriever
         self.memory = ChatMemory()
         self.memory.load(state_path)
+
+        DOCUMENTS = iter_jsonl_directory(docs_dir)
+        self.retriever = DocsRetriever(DOCUMENTS)
         
         self.n_turns = n_turns
         self.state_path = state_path
