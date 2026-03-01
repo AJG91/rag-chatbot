@@ -42,6 +42,7 @@ def MyAssistant(
 
 class MyChat():
     """
+    Generates a chatbot assistant using either a local model or an API model.
         
     Attributes
     ----------
@@ -110,6 +111,11 @@ class MyChat():
         ----------
         user_message : str
             The message from the user.
+
+        Returns
+        -------
+        reply : str
+            Model output.
         """
         prompt = build_prompt_with_history(
             self.memory.last_n_turns(self.n_turns), 
@@ -129,7 +135,7 @@ class MyChat():
     ) -> tuple[list, str]:
         """
         Wrapper for `chat` method.
-        Generates a response from the language model using `user_text` input.
+        Generates a response from the language model using `user_message` input.
         Saves the conversation and log state of the chatbot to directory.
 
         Parameters
@@ -137,6 +143,7 @@ class MyChat():
         user_message : str
             The message from the user.
         chat_history : list or None
+            History of chat.
 
         Returns
         -------
@@ -159,7 +166,7 @@ class MyChat():
         return chat_history
     
     def clear_chat(self) -> list:
-        "Clears chat memory and returns empty list."
+        """Clears chat memory and returns empty list."""
         self.memory.clear_memory(self.state_path)
         log_output(self.log_path, "Memory cleared", "")
         return []
