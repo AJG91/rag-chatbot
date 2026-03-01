@@ -4,10 +4,11 @@ from basic_chatbot.memory import ChatMemory
 from basic_chatbot.gradio_ui import chat_interface
 from basic_chatbot.logging import log_output
 from rag_chatbot.prompt_utils import build_prompt_with_history, extract_assistant_reply
+from typing import Callable
 
 def MyAssistant(
     model: str, 
-    retriever,
+    retriever: Callable,
     n_turns: int, 
     state_dir: str, 
     log_dir: str, 
@@ -16,13 +17,15 @@ def MyAssistant(
     inline: bool = False
 ):
     """
-    Wrapper for the `MyChat` class and `chat_interface` function.
-    Creates an instance of `MyChat` and launches a Gradio UI.
+    Wrapper for the `RAGChat` class and `chat_interface` function.
+    Creates an instance of `RAGChat` and launches a Gradio UI.
 
     Parameters
     ----------
     model : str
         Name of model that will be loaded.
+    retriever : Callable
+        Used to retrieve similar information from documents as the user input.
     n_turns : int
         Number of chat instances saved for context.
     state_dir : str
@@ -42,10 +45,47 @@ def MyAssistant(
     demo.launch(share=share, inline=inline)
 
 class RAGChat():
+    """
+    Generates an assistant that employs RAG using either a local model or an API model.
+    
+    Attributes
+    ----------
+    lm : LocalLM | OpenAIChat
+        Model that will be used for the chatbot.
+    retriever : Callable
+        Used to retrieve similar information from documents as the user input.
+    memory : ChatMemory
+        A class used to keep track of the chatbot's memory.
+    n_turns : int
+        Number of chat instances saved for context.
+    state_path : str
+        Path to directory where the conversation state is saved.
+    log_path : str
+        Path to directory where the log state is saved.
+
+    Parameters
+    ----------
+    model_name : str
+        Name of model that will be loaded.
+    retriever : Callable
+        Used to retrieve similar information from documents as the user input.
+    n_turns : int
+        Number of chat instances saved for context.
+    state_dir : str
+        Directory where the conversation state is saved.
+    log_dir : str
+        Directory where the conversation log is saved.
+    state_fname : str, optional (default="conversation_state.json")
+        Name of conversation state JSON file.
+    log_fname : str, optional (default="chat_logs.jsonl")
+        Name of conversation log JSON file.
+    api_key : str or None, optional (default=None)
+        API key for OpenAI model.
+    """
     def __init__(
         self, 
         model_name: str, 
-        retriever,
+        retriever: Callable,
         n_turns: int, 
         state_dir: str,
         log_dir: str,
@@ -70,6 +110,20 @@ class RAGChat():
         self.log_path = log_path
 
     def chat(self, question: str) -> str:
+        """
+        Generates an output from the language model using previous `n_turns`.
+        The user question and model response is then passed into the memory class.
+
+        Parameters
+        ----------
+        question : str
+            The question asked by the user.
+
+        Returns
+        -------
+        reply : str
+            Model output.
+        """
         docs = self.retriever.retrieve(question)
         
         prompt = build_prompt_with_history(
@@ -91,15 +145,16 @@ class RAGChat():
         chat_history: list | None
     ) -> tuple[list, str]:
         """
-        Wrapper for `ask` method.
+        Wrapper for `chat` method.
         Generates a response from the language model using `user_question` input.
         Saves the conversation and log state of the chatbot to directory.
 
         Parameters
         ----------
-        user_message : str
-            The message from the user.
+        user_question : str
+            Question from the user.
         chat_history : list or None
+            History of chat.
 
         Returns
         -------
@@ -122,7 +177,7 @@ class RAGChat():
         return chat_history
     
     def clear_chat(self) -> list:
-        "Clears chat memory and returns empty list."
+        """Clears chat memory and returns empty list."""
         self.memory.clear_memory(self.state_path)
         log_output(self.log_path, "Memory cleared", "")
         return []
