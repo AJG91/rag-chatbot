@@ -4,7 +4,7 @@ from transformers import (
     PreTrainedTokenizerBase, PreTrainedModel
 )
 from transformers.generation.utils import GenerateOutput
-from basic_chatbot.utils import get_device, to_device
+from utils import get_device, to_device
 
 class LocalLM():
     """
