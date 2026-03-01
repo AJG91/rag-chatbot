@@ -2,6 +2,7 @@ import torch as tc
 import numpy as np
 import random
 import yaml
+import json
 from types import SimpleNamespace
 from typing import Any
 
@@ -115,3 +116,16 @@ def generate_namespace(path: str = "config.yaml") -> SimpleNamespace:
     """
     config = load_config(path=path)
     return SimpleNamespace(**config)
+
+def iter_jsonl(path: str):
+    """
+    Loads a jsonl file using an iterator.
+    
+    Parameters
+    ----------
+    path : str
+        Path to jsonl file.
+    """
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            yield json.loads(line)
