@@ -1,12 +1,56 @@
 from basic_chatbot.model_local import LocalLM
 from basic_chatbot.model_openai import OpenAIChat
-from rag_chatbot.prompt_utils import build_prompt
+from basic_chatbot.memory import ChatMemory
+from basic_chatbot.gradio_ui import chat_interface
+from basic_chatbot.logging import log_output
+from rag_chatbot.prompt_utils import build_prompt_with_history, extract_assistant_reply
+
+def MyAssistant(
+    model: str, 
+    retriever,
+    n_turns: int, 
+    state_dir: str, 
+    log_dir: str, 
+    api_key: str | None = None,
+    share: bool = False, 
+    inline: bool = False
+):
+    """
+    Wrapper for the `MyChat` class and `chat_interface` function.
+    Creates an instance of `MyChat` and launches a Gradio UI.
+
+    Parameters
+    ----------
+    model : str
+        Name of model that will be loaded.
+    n_turns : int
+        Number of chat instances saved for context.
+    state_dir : str
+        Directory where the conversation state is saved.
+    log_dir : str
+        Directory where the conversation log is saved.
+    api_key : str or None, optional (default=None)
+        API key for OpenAI model.
+    share : bool, optional (default=False)
+        Creates a shareable link if set to True.
+    inline : bool, optional (default=False)
+        Opens Gradio UI inline if set to True.
+        Otherwise, opens a new window for UI.
+    """
+    bot = RAGChat(model, retriever, n_turns, state_dir, log_dir, api_key=api_key)
+    demo = chat_interface(bot)
+    demo.launch(share=share, inline=inline)
 
 class RAGChat():
     def __init__(
         self, 
         model_name: str, 
         retriever,
+        n_turns: int, 
+        state_dir: str,
+        log_dir: str,
+        state_fname: str = "conversation_state.json",
+        log_fname: str = "chat_logs.jsonl",
         api_key: str | None = None
     ):
         if api_key:
@@ -14,21 +58,71 @@ class RAGChat():
         else:
             self.lm = LocalLM(model_name)
 
+        state_path = state_dir + state_fname
+        log_path = log_dir + log_fname
+
         self.retriever = retriever
+        self.memory = ChatMemory()
+        self.memory.load(state_path)
+        
+        self.n_turns = n_turns
+        self.state_path = state_path
+        self.log_path = log_path
 
-    def ask(self, question: str) -> str:
+    def chat(self, question: str) -> str:
         docs = self.retriever.retrieve(question)
-        prompt = build_prompt(docs, question)
-        output = self.lm.generate_text(prompt)
-        reply = self.extract_reply(output, question)
-        return self.append_question(reply, question)
-    
-    def append_question(self, text: str, question: str) -> str:
-        """Append the question to the output."""
-        return "Question: " + question + "\n" + text
+        
+        prompt = build_prompt_with_history(
+            self.memory.last_n_turns(self.n_turns), 
+            docs,
+            question
+        )
 
-    def extract_reply(self, text: str, question: str) -> str:
-        """Extracts the chatbot's reply."""
-        if question in text:
-            return text.rsplit(question, 1)[-1].strip()
-        return text.strip()
+        text = self.lm.generate_text(prompt)
+        reply = extract_assistant_reply(text)
+
+        self.memory.add_user(question)
+        self.memory.add_assistant(reply)
+        return reply
+    
+    def respond(
+        self,
+        user_question: str, 
+        chat_history: list | None
+    ) -> tuple[list, str]:
+        """
+        Wrapper for `ask` method.
+        Generates a response from the language model using `user_question` input.
+        Saves the conversation and log state of the chatbot to directory.
+
+        Parameters
+        ----------
+        user_message : str
+            The message from the user.
+        chat_history : list or None
+
+        Returns
+        -------
+        tuple[list, str]
+            Chat history and an empty string.
+        """
+        if chat_history is None:
+            chat_history = []
+
+        chat_history.append({"role": "user", "content": user_question})
+
+        try:
+            reply = str(self.chat(user_question))
+        except Exception as e:
+            reply = f"[ERROR] {type(e).__name__}: {e}"
+
+        log_output(self.log_path, user_question, reply)
+        self.memory.save(self.state_path)
+        chat_history.append({"role": "assistant", "content": reply})
+        return chat_history
+    
+    def clear_chat(self) -> list:
+        "Clears chat memory and returns empty list."
+        self.memory.clear_memory(self.state_path)
+        log_output(self.log_path, "Memory cleared", "")
+        return []
