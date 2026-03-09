@@ -8,7 +8,9 @@ class DocsRetriever:
     Attributes
     ----------
     documents : list[str]
-    model : str
+        List of text that will be encoded and retrieved.
+    model : str, optional (default="all-MiniLM-L6-v2")
+        Name of model that will be loaded.
     index : faiss.Index
         Constructs an exact FAISS index using squared L2 distance.
 
